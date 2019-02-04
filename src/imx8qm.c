@@ -207,15 +207,16 @@ int build_container_qm(uint32_t sector_size, uint32_t ivt_offset, char* out_file
 
                         if (img_sp->ext == CORE_CA53){
                           imx_header.boot_data[container].img[cont_img_count].flags |= (SC_R_A53_0 << BOOT_IMG_FLAGS_CPU_RID_SHIFT);
+                          imx_header.boot_data[container].img[cont_img_count].flags |= (SC_R_MU_0A << BOOT_IMG_FLAGS_MU_RID_SHIFT);
                         }
                         else if (img_sp->ext == CORE_CA72){
                           imx_header.boot_data[container].img[cont_img_count].flags |= (SC_R_A72_0 << BOOT_IMG_FLAGS_CPU_RID_SHIFT);
+                          imx_header.boot_data[container].img[cont_img_count].flags |= (SC_R_MU_3A << BOOT_IMG_FLAGS_MU_RID_SHIFT);
                         }
                         else {
                           fprintf(stderr, "Error: invalid AP core id: %" PRIi64 "\n", img_sp->ext);
                           exit(EXIT_FAILURE);
                         }
-                        imx_header.boot_data[container].img[cont_img_count].flags |= (SC_R_MU_0A << BOOT_IMG_FLAGS_MU_RID_SHIFT);
 
                         if(custom_partition != 0)
                         {
