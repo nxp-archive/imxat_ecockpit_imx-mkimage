@@ -74,6 +74,13 @@ u-boot-atf-container.img: bl31.bin u-boot-hash.bin
 	./$(MKIMG) -soc QM -rev B0 -c -ap bl31.bin a53 0x80000000 -ap u-boot-hash.bin a53 0x80020000 -out u-boot-atf-container.img; \
 	fi
 
+u-boot-atf-container-a72.img: u-boot-atf-a72.bin tee-a72.bin
+		if [ $(shell echo $(ROLLBACK_INDEX_IN_CONTAINER)) ]; then \
+			./$(MKIMG) -soc QM -sw_version $(ROLLBACK_INDEX_IN_CONTAINER) -rev B0 -c -ap u-boot-atf-a72.bin a72 0xC0000000 -ap tee-a72.bin a72 0xFE000000 -out u-boot-atf-container-a72.img; \
+		else \
+			./$(MKIMG) -soc QM -rev B0 -c -ap u-boot-atf-a72.bin a72 0xC0000000 -ap tee-a72.bin a72 0xFE000000 -out u-boot-atf-container-a72.img; \
+		fi; \
+
 .PHONY: clean
 clean:
 	@rm -f $(DCD_CFG) .imx8_dcd.cfg.cfgtmp.d $(DCD_800_CFG) $(DCD_1200_CFG) .imx8qm_dcd_800.cfg.cfgtmp.d .imx8qm_dcd.cfg.cfgtmp.d .imx8qm_dcd_1200.cfg.cfgtmp.d head.hash u-boot-hash.bin u-boot-atf.itb u-boot-atf-container.img u-boot-atf-hdmi.bin hdmitxfw-pad.bin hdmirxfw-pad.bin ecockpit-ap.bin flash.bin u-boot-atf.bin u-boot-atf-a72.bin u-boot-hash-a72.bin
@@ -90,11 +97,19 @@ ecockpit-ap.bin: u-boot-atf.bin u-boot-atf-a72.bin
 flash_ecockpit_a0: $(MKIMG) $(DCD_CFG) scfw_tcm.bin ecockpit-ap.bin
 	./$(MKIMG) -soc QM -c -dcd $(DCD_CFG) -scfw scfw_tcm.bin -c -ap ecockpit-ap.bin a53 0x80000000 -out flash.bin
 
-flash_ecockpit_b0: $(MKIMG) scfw_tcm.bin ecockpit-ap.bin $(AHAB_IMG) tee.bin
+flash_ecockpit_b0: $(MKIMG) scfw_tcm.bin $(AHAB_IMG) tee.bin u-boot-atf.bin u-boot-atf-a72.bin
 	./$(MKIMG) -soc QM -rev B0 -append $(AHAB_IMG) -c -scfw scfw_tcm.bin -ap u-boot-atf.bin a53 0x80000000 mu0 pt1 -ap u-boot-atf-a72.bin a72 0xC0000000 mu3 pt3 -data tee.bin 0xBE000000 -out flash.bin
 
-flash_ecockpit_b0_m4: $(MKIMG) scfw_tcm.bin ecockpit-ap.bin $(AHAB_IMG) m4_image.bin m4_1_image.bin tee.bin
+flash_ecockpit_b0_m4: $(MKIMG) scfw_tcm.bin $(AHAB_IMG) u-boot-atf.bin u-boot-atf-a72.bin m4_image.bin m4_1_image.bin tee.bin
 	./$(MKIMG) -soc QM -rev B0 -append $(AHAB_IMG) -c -flags 0x00200000 -scfw scfw_tcm.bin -ap u-boot-atf.bin a53 0x80000000 mu0 pt1 -ap u-boot-atf-a72.bin a72 0xC0000000 mu3 pt3 -data tee.bin 0xBE000000 -p5 -m4 m4_image.bin 0 0x34FE0000 -p6 -m4 m4_1_image.bin 1 0x38FE0000 -out flash.bin
+
+flash_ecockpit_b0_m4_spl: $(MKIMG) u-boot-atf-container-a72.img scfw_tcm.bin $(AHAB_IMG) m4_image.bin m4_1_image.bin u-boot-atf.bin tee.bin u-boot-spl-a72.bin
+	./$(MKIMG) -soc QM -rev B0 -append $(AHAB_IMG) -c -flags 0x00200000 -scfw scfw_tcm.bin -ap u-boot-atf.bin a53 0x80000000 mu0 pt1 -ap u-boot-spl-a72.bin a72 0x00100000 mu3 pt3 -data tee.bin 0xBE000000 -p5 -m4 m4_image.bin 0 0x34FE0000 -p6 -m4 m4_1_image.bin 1 0x38FE0000 -out flash.bin
+	cp flash.bin boot-spl-container-a53.img
+	@flashbin_size=`wc -c flash.bin | awk '{print $$1}'`; \
+                   pad_cnt=$$(((flashbin_size + 0x400 - 1) / 0x400)); \
+                   echo "append u-boot-atf-container-a72.img at $$pad_cnt KB"; \
+                   dd if=u-boot-atf-container-a72.img of=flash.bin bs=1K seek=$$pad_cnt;
 
 flash_flexspi: $(MKIMG) $(AHAB_IMG) scfw_tcm.bin u-boot-atf.bin
 	./$(MKIMG) -soc QM -rev B0 -dev flexspi -append $(AHAB_IMG) -c -scfw scfw_tcm.bin -ap u-boot-atf.bin a53 0x80000000 -out flash.bin
