@@ -111,6 +111,14 @@ flash_ecockpit_b0_m4_spl: $(MKIMG) u-boot-atf-container-a72.img scfw_tcm.bin $(A
                    echo "append u-boot-atf-container-a72.img at $$pad_cnt KB"; \
                    dd if=u-boot-atf-container-a72.img of=flash.bin bs=1K seek=$$pad_cnt;
 
+flash_ecockpit_b0_spl: $(MKIMG) u-boot-atf-container-a72.img scfw_tcm.bin $(AHAB_IMG) u-boot-atf.bin tee.bin u-boot-spl-a72.bin
+	./$(MKIMG) -soc QM -rev B0 -append $(AHAB_IMG) -c -scfw scfw_tcm.bin -ap u-boot-atf.bin a53 0x80000000 mu0 pt1 -ap u-boot-spl-a72.bin a72 0x00100000 mu3 pt3 -data tee.bin 0xBE000000 -out flash.bin
+	cp flash.bin boot-spl-container-a53.img
+	@flashbin_size=`wc -c flash.bin | awk '{print $$1}'`; \
+                   pad_cnt=$$(((flashbin_size + 0x400 - 1) / 0x400)); \
+                   echo "append u-boot-atf-container-a72.img at $$pad_cnt KB"; \
+                   dd if=u-boot-atf-container-a72.img of=flash.bin bs=1K seek=$$pad_cnt;
+
 flash_flexspi: $(MKIMG) $(AHAB_IMG) scfw_tcm.bin u-boot-atf.bin
 	./$(MKIMG) -soc QM -rev B0 -dev flexspi -append $(AHAB_IMG) -c -scfw scfw_tcm.bin -ap u-boot-atf.bin a53 0x80000000 -out flash.bin
 	./$(QSPI_PACKER) $(QSPI_HEADER)
