@@ -87,9 +87,11 @@ ecockpit-ap.bin: u-boot-atf.bin u-boot-atf-a72.bin
         @cp u-boot-atf.bin ecockpit-ap.bin
         @dd if=u-boot-atf-a72.bin of=ecockpit-ap.bin bs=1K seek=1024
 
-flash_ecockpit: $(MKIMG) $(DCD_CFG) scfw_tcm.bin ecockpit-ap.bin
+flash_ecockpit_a0: $(MKIMG) $(DCD_CFG) scfw_tcm.bin ecockpit-ap.bin
         ./$(MKIMG) -soc QM -c -dcd $(DCD_CFG) -scfw scfw_tcm.bin -c -ap ecockpit-ap.bin a53 0x80000000 -out flash.bin
 
+flash_ecockpit_b0: $(MKIMG) scfw_tcm.bin ecockpit-ap.bin mx8qm-ahab-container.img
+        ./$(MKIMG) -soc QM -rev B0 -append mx8qm-ahab-container.img -c -scfw scfw_tcm.bin -ap u-boot-atf.bin a53 0x80000000 mu0 pt1 -ap u-boot-atf-a72.bin a72 0xC0000000 mu3 pt3 -out flash.bin
 
 flash_flexspi: $(MKIMG) $(AHAB_IMG) scfw_tcm.bin u-boot-atf.bin
 	./$(MKIMG) -soc QM -rev B0 -dev flexspi -append $(AHAB_IMG) -c -scfw scfw_tcm.bin -ap u-boot-atf.bin a53 0x80000000 -out flash.bin
