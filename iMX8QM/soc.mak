@@ -32,6 +32,18 @@ u-boot-atf.bin: u-boot-hash.bin bl31.bin
 	cp u-boot-atf-hdmi.bin u-boot-atf.bin; \
 	fi
 
+u-boot-atf-a72.bin: u-boot-a72.bin bl31-a72.bin
+        @cp bl31-a72.bin u-boot-atf-a72.bin
+        ./$(MKIMG) -commit > head.hash
+        @cat u-boot-a72.bin head.hash > u-boot-hash-a72.bin
+        @dd if=u-boot-hash-a72.bin of=u-boot-atf-a72.bin bs=1K seek=128
+        @if [ -f "hdmitxfw.bin" ] && [ -f "hdmirxfw.bin" ]; then \
+        objcopy -I binary -O binary --pad-to 0x20000 --gap-fill=0x0 hdmitxfw.bin hdmitxfw-pad.bin; \
+        objcopy -I binary -O binary --pad-to 0x20000 --gap-fill=0x0 hdmirxfw.bin hdmirxfw-pad.bin; \
+        cat u-boot-atf-a72.bin hdmitxfw-pad.bin hdmirxfw-pad.bin > u-boot-atf-a72-hdmi.bin; \
+        cp u-boot-atf-a72-hdmi.bin u-boot-atf-a72.bin; \
+        fi
+
 u-boot-atf.itb: u-boot-hash.bin bl31.bin
 	@if [ -f "hdmitxfw.bin" ] && [ -f "hdmirxfw.bin" ]; then \
 	objcopy -I binary -O binary --pad-to 0x20000 --gap-fill=0x0 hdmitxfw.bin hdmitxfw-pad.bin; \
@@ -64,12 +76,20 @@ u-boot-atf-container.img: bl31.bin u-boot-hash.bin
 
 .PHONY: clean
 clean:
-	@rm -f $(DCD_CFG) .imx8_dcd.cfg.cfgtmp.d $(DCD_800_CFG) $(DCD_1200_CFG) .imx8qm_dcd_800.cfg.cfgtmp.d .imx8qm_dcd.cfg.cfgtmp.d .imx8qm_dcd_1200.cfg.cfgtmp.d head.hash u-boot-hash.bin u-boot-atf.itb u-boot-atf-container.img u-boot-atf-hdmi.bin hdmitxfw-pad.bin hdmirxfw-pad.bin
+	@rm -f $(DCD_CFG) .imx8_dcd.cfg.cfgtmp.d $(DCD_800_CFG) $(DCD_1200_CFG) .imx8qm_dcd_800.cfg.cfgtmp.d .imx8qm_dcd.cfg.cfgtmp.d .imx8qm_dcd_1200.cfg.cfgtmp.d head.hash u-boot-hash.bin u-boot-atf.itb u-boot-atf-container.img u-boot-atf-hdmi.bin hdmitxfw-pad.bin hdmirxfw-pad.bin ecockpit-ap.bin flash.bin u-boot-atf.bin u-boot-atf-a72.bin u-boot-hash-a72.bin
 	@rm -rf extracted_imgs
 	@echo "imx8qm clean done"
 
 flash: $(MKIMG) $(AHAB_IMG) scfw_tcm.bin u-boot-atf.bin
 	./$(MKIMG) -soc QM -rev B0 -append $(AHAB_IMG) -c -scfw scfw_tcm.bin -ap u-boot-atf.bin a53 0x80000000 -out flash.bin
+
+ecockpit-ap.bin: u-boot-atf.bin u-boot-atf-a72.bin
+        @cp u-boot-atf.bin ecockpit-ap.bin
+        @dd if=u-boot-atf-a72.bin of=ecockpit-ap.bin bs=1K seek=1024
+
+flash_ecockpit: $(MKIMG) $(DCD_CFG) scfw_tcm.bin ecockpit-ap.bin
+        ./$(MKIMG) -soc QM -c -dcd $(DCD_CFG) -scfw scfw_tcm.bin -c -ap ecockpit-ap.bin a53 0x80000000 -out flash.bin
+
 
 flash_flexspi: $(MKIMG) $(AHAB_IMG) scfw_tcm.bin u-boot-atf.bin
 	./$(MKIMG) -soc QM -rev B0 -dev flexspi -append $(AHAB_IMG) -c -scfw scfw_tcm.bin -ap u-boot-atf.bin a53 0x80000000 -out flash.bin
